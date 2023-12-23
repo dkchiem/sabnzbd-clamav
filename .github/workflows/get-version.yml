@@ -1,0 +1,32 @@
+name: Get Latest Base Image Release Version
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+# https://stackoverflow.com/questions/58465057/trigger-a-github-action-when-another-repository-creates-a-new-release
+
+jobs:
+  get-version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Fetch release version
+        run: |
+          curl -sL https://api.github.com/repos/linuxserver/docker-sabnzbd/releases/latest | \
+          jq -r ".tag_name" > release-versions/docker-sabnzbd-latest.txt
+      - name: Check for modified files
+        id: git-check
+        run: echo ::set-output name=modified::$([ -z "`git status --porcelain`" ] && echo "false" || echo "true")
+      - name: Commit latest release version
+        if: steps.git-check.outputs.modified == 'true'
+        run: |
+          git config --global user.name 'Vu Dang Khoa Chiem'
+          git config --global user.email 'dk@chiem.me'
+          git commit -am "New base image release version"
+          git push
